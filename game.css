@@ -1,0 +1,37 @@
+:root {
+  --cell-width: 90px; /* 音符寬度 */
+  --cell-height: 30px;
+  --cell-gap: 30px;
+  --visible-rows: 10; /* 可見的音符排數 */
+}
+
+#gameArea {
+  display: flex;
+  flex-direction: column; /* 從上到下 */
+  height: calc((var(--cell-height) + var(--cell-gap)) * var(--visible-rows) + 20px);
+  width: 500px;
+  border: 1px solid #ccc;
+  background: #f8f8f8;
+  padding: 5px;
+  overflow: hidden;
+  user-select: none;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--cell-gap);
+}
+.note-cell {
+  width: var(--cell-width);
+  height: var(--cell-height);
+  border: 1px solid transparent;
+}
+.note-cell.active {
+  background-color: #007bff;
+  border-radius: 4px;
+}
+.row {
+  display: flex;
+  justify-content: space-evenly;
+  margin-bottom: var(--cell-gap);
+}

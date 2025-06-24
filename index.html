@@ -1,75 +1,90 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>音遊練習 - 吃掉小貓貓</title>
-  <style>
-    body {
-      margin: 0;
-      background: #111;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
-    .game {
-      display: flex;
-      justify-content: center;
-      position: relative;
-      height: 100vh;
-    }
-    .lane {
-      width: 80px;
-      height: 100%;
-      border: 1px solid #444;
-      margin: 0 5px;
-      position: relative;
-      background-color: #222;
-    }
-    .note {
-      width: 100%;
-      height: 20px;
-      background: #0cf;
-      position: absolute;
-      top: -20px;
-      border-radius: 4px;
-      animation: fall linear forwards;
-    }
-    @keyframes fall {
-      0% { top: -20px; }
-      100% { top: 100vh; }
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>音遊練習 - 按鍵觸發下落與設定切換</title>
+<link rel="stylesheet" href="game.css" />
+<link rel="stylesheet" href="settings.css" />
 </head>
 <body>
-  <div class="game">
-    <div class="lane" id="lane0"></div>
-    <div class="lane" id="lane1"></div>
-    <div class="lane" id="lane2"></div>
-    <div class="lane" id="lane3"></div>
+
+<button id="toggleSettings">進入設定區</button>
+
+<div id="gameArea"></div>
+
+<div id="settingsArea">
+  <label for="keyCountInput">請輸入音符欄數（Key數，整數，建議4～8）：</label><br />
+  <span id="keyCountLabel" style="color: red; display:none; margin-right:5px;">這裡 --→</span>
+  <input type="number" id="keyCountInput" min="1" max="40" value="4" style="width: 60px;" />
+  <br /><br />
+
+  <label for="keyInput">請輸入對應按鍵（連續輸入，不需逗號）：</label><br />
+  <span id="keyInputLabel" style="color: red; display:none; margin-right:5px;">這裡 --→</span>
+  <input type="text" id="keyInput" maxlength="40" value="dfjk" />
+  <br /><br />
+  <!-- 按鈕 -->
+<button id="helpBtn">說明</button>
+
+<!-- 彈窗遮罩 -->
+<div id="modal" style="
+  display: none; 
+  position: fixed; 
+  top: 0; left: 0; right: 0; bottom: 0; 
+  background: rgba(0,0,0,0.5);
+  justify-content: center; 
+  align-items: center;
+">
+  <!-- 彈窗本體 -->
+  <div style="
+    background: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    width: 800px; 
+    position: relative;
+  ">
+    <!-- 關閉按鈕 -->
+    <button id="closeBtn" style="
+      position: absolute; 
+      top: 10px; 
+      right: 10px; 
+      background: transparent; 
+      border: none; 
+      font-size: 18px; 
+      cursor: pointer;
+    ">×</button><div style="display: flex; align-items: center; gap: 10px; flex-wrap: nowrap;">
+
+  <img src="例子1.png" alt="說明圖片" style="width: 150px; height: auto;">
+
+  <div style="display: flex; align-items: center; font-size: 16px; white-space: nowrap;">
+    <span style="font-size: 24px; margin-right: 6px;">←</span>
+    <span>這是輸入0123的譜面。</span>
   </div>
 
-  <script>
-    const lanes = [
-      document.getElementById('lane0'),
-      document.getElementById('lane1'),
-      document.getElementById('lane2'),
-      document.getElementById('lane3')
-    ];
+<img src="例子2.png" alt="說明圖片" style="width: 150px; height: auto;">
 
-    function spawnNote() {
-      const laneIndex = Math.floor(Math.random() * 4);
-      const note = document.createElement('div');
-      note.classList.add('note');
-      note.style.animationDuration = '3s';
-      lanes[laneIndex].appendChild(note);
+  <div style="display: flex; align-items: center; font-size: 16px; white-space: nowrap;">
+    <span style="font-size: 24px; margin-right: 6px;">←</span>
+    <span>這是輸入013的譜面。</span>
+  </div>
 
-      // 自動移除 note（避免記憶體爆）
-      setTimeout(() => {
-        note.remove();
-      }, 3000);
-    }
+</div>
+    <!-- 你的說明內容 -->
+    <div id="modalContent">從左到右分別為1234到n鍵<br />
+      輸入0則為第1鍵以此類推，若大於9時則使用小寫字母作為輸入，<br />
+      例如a代表第11鍵，b代表第12鍵
+    </div>
+  </div>
+</div>
 
-    // 每 500ms 生成一個 note
-    setInterval(spawnNote, 500);
-  </script>
+<script src="map_editor_block.js"></script>
+  <label for="mapInput">請在此編寫譜面:</label><br />
+  <input id="mapInput" style="width:100%; " placeholder="在這裡輸入譜面資料..."></input>
+  <br />
+  <button id="saveSettings" style="margin-top:10px;">保存設定</button>
+</div>
+
+
+<script src="game.js"></script>
+<script src="settings.js"></script>
 </body>
 </html>

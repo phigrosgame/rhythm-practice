@@ -1,0 +1,62 @@
+body {
+  margin: 0; 
+  background: #fff; 
+  font-family: sans-serif;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  padding: 20px;
+  height: 100vh;
+  box-sizing: border-box;
+}
+button {
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#settingsArea {
+  display: none;
+  width: 500px;
+  border: 1px solid #aaa;
+  background: #f0f0f0;
+  padding: 15px;
+  box-sizing: border-box;
+  text-align: center;
+  user-select: none;
+}
+#keyInput {
+  width: 150px;
+  font-size: 16px;
+  text-align: center;
+  margin-top: 8px;
+}
+#settingsArea label {
+  font-size: 16px;
+  font-weight: 600;
+}
+#keyCountInput {
+  font-size: 16px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#chartInput {
+  font-family: monospace;
+  font-size: 14px;
+  padding: 6px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+}
+#keyCountInput {
+  font-size: 16px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
