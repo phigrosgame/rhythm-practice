@@ -2,89 +2,1325 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
-<title>音遊練習 - 按鍵觸發下落與設定切換</title>
-<link rel="stylesheet" href="game.css" />
-<link rel="stylesheet" href="settings.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音遊練習</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #00f5d4;
+    --accent2: #f72585;
+    --accent3: #7209b7;
+    --text: #e0e0f0;
+    --text-dim: #666680;
+    --cell-width: 80px;
+    --cell-height: 28px;
+    --cell-gap: 32px;
+    --visible-rows: 10;
+    --key-count: 4;
+    --chart-width: 500px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(114,9,183,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,245,212,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Header */
+  .header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,245,212,0.5);
+  }
+
+  .header-btns {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,245,212,0.05);
+  }
+  .btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,245,212,0.1);
+    box-shadow: 0 0 12px rgba(0,245,212,0.2);
+  }
+  .btn.danger {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(247,37,133,0.05);
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    width: 100%;
+    display: flex;
+    gap: 20px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    font-family: 'Orbitron', monospace;
+  }
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: 'Orbitron', monospace;
+    color: var(--accent);
+  }
+  .stat-value.miss { color: var(--accent2); }
+
+  /* Game area */
+  #gameArea {
+    position: relative;
+    width: var(--chart-width);
+    height: calc((var(--cell-height) + var(--cell-gap)) * var(--visible-rows) + 20px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px;
+    overflow: hidden;
+    transition: width 0.3s;
+  }
+
+  #gameArea::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--cell-height) + var(--cell-gap) + 10px);
+    background: linear-gradient(to top, rgba(0,245,212,0.04), transparent);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Judge line */
+  .judge-line {
+    position: absolute;
+    bottom: calc(var(--cell-gap) / 2 + 5px);
+    left: 10px;
+    right: 10px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--accent), transparent);
+    opacity: 0.4;
+    z-index: 2;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-evenly;
+    margin-bottom: var(--cell-gap);
+  }
+
+  .note-cell {
+    width: var(--cell-width);
+    height: var(--cell-height);
+    border: 1px solid transparent;
+    transition: background 0.08s;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .note-cell.active {
+    background: linear-gradient(135deg, var(--accent), rgba(0,245,212,0.6));
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0,245,212,0.4), inset 0 0 8px rgba(255,255,255,0.1);
+    border-radius: 3px;
+  }
+
+  .note-cell.active::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    to { left: 200%; }
+  }
+
+  .note-cell.key-img-active {
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+  .note-cell.key-img-active img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 3px;
+  }
+
+  .note-cell.hit {
+    background: rgba(0,245,212,0.8);
+    animation: hitFlash 0.15s ease-out;
+  }
+  @keyframes hitFlash {
+    0% { transform: scaleY(1.2); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 0; }
+  }
+
+  /* Key display bar at bottom */
+  #keyBar {
+    width: var(--chart-width);
+    display: flex;
+    justify-content: space-evenly;
+    padding: 6px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top: none;
+    transition: width 0.3s;
+  }
+
+  .key-display {
+    width: var(--cell-width);
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: all 0.08s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .key-display.pressed {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(0,245,212,0.6);
+    transform: translateY(1px);
+  }
+
+  /* Pause overlay */
+  #pauseOverlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(10,10,15,0.85);
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 24px;
+    color: var(--accent);
+    letter-spacing: 4px;
+  }
+
+  /* ===== SETTINGS PANEL ===== */
+  #settingsPanel {
+    display: none;
+    width: 100%;
+    max-width: 700px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    gap: 20px;
+    flex-direction: column;
+  }
+
+  .settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setting-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .setting-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    min-width: 120px;
+  }
+
+  input[type="number"], input[type="text"], textarea, select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: 'Noto Sans TC', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="number"]:focus, input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+  input[type="number"] { width: 70px; }
+  input[type="text"] { width: 200px; }
+
+  textarea {
+    width: 100%;
+    height: 80px;
+    resize: vertical;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  input[type="range"] {
+    accent-color: var(--accent);
+    width: 140px;
+  }
+
+  .range-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 50px;
+  }
+
+  /* Map input area */
+  .map-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .map-tools {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .map-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .map-hint code {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(0,245,212,0.08);
+    padding: 1px 4px;
+  }
+
+  /* Random gen */
+  .random-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Key image upload */
+  .img-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .img-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .img-preview {
+    width: 50px;
+    height: 24px;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--text-dim);
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+  }
+  .img-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .img-slot-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+
+  /* Error highlight */
+  .error {
+    border-color: var(--accent2) !important;
+    box-shadow: 0 0 8px rgba(247,37,133,0.3);
+  }
+
+  /* Save btn */
+  #saveSettings {
+    align-self: flex-end;
+    padding: 10px 28px;
+    font-size: 12px;
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 2px;
+    background: rgba(0,245,212,0.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+  }
+  #saveSettings:hover {
+    background: rgba(0,245,212,0.2);
+    box-shadow: 0 0 20px rgba(0,245,212,0.3);
+  }
+
+  /* Miss flash */
+  @keyframes missFlash {
+    0% { background: rgba(247,37,133,0.2); }
+    100% { background: transparent; }
+  }
+  .miss-flash {
+    animation: missFlash 0.3s ease-out;
+  }
+
+  /* Combo popup */
+  #comboPopup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Orbitron', monospace;
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,245,212,0.8);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+    z-index: 100;
+  }
+  #comboPopup.show {
+    opacity: 1;
+    animation: comboPop 0.6s ease-out forwards;
+  }
+  @keyframes comboPop {
+    0% { transform: translate(-50%,-50%) scale(0.5); opacity: 1; }
+    60% { transform: translate(-50%,-60%) scale(1.1); opacity: 1; }
+    100% { transform: translate(-50%,-70%) scale(1); opacity: 0; }
+  }
+</style>
 </head>
 <body>
+<div class="app">
 
-<button id="toggleSettings">進入設定區</button>
-
-<div id="gameArea"></div>
-
-<div id="settingsArea">
-  <label for="keyCountInput">請輸入音符欄數（Key數，整數，建議4～8）：</label><br />
-  <span id="keyCountLabel" style="color: red; display:none; margin-right:5px;">這裡 --→</span>
-  <input type="number" id="keyCountInput" min="1" max="40" value="4" style="width: 60px;" />
-  <br /><br />
-
-  <label for="keyInput">請輸入對應按鍵（連續輸入，不需逗號）：</label><br />
-  <span id="keyInputLabel" style="color: red; display:none; margin-right:5px;">這裡 --→</span>
-  <input type="text" id="keyInput" maxlength="40" value="dfjk" />
-  <br /><br />
-  <!-- 按鈕 -->
-<button id="helpBtn">說明</button>
-
-<!-- 彈窗遮罩 -->
-<div id="modal" style="
-  display: none; 
-  position: fixed; 
-  top: 0; left: 0; right: 0; bottom: 0; 
-  background: rgba(0,0,0,0.5);
-  justify-content: center; 
-  align-items: center;
-">
-  <!-- 彈窗本體 -->
-  <div style="
-    background: white; 
-    padding: 20px; 
-    border-radius: 8px; 
-    width: 800px; 
-    position: relative;
-  ">
-    <!-- 關閉按鈕 -->
-    <button id="closeBtn" style="
-      position: absolute; 
-      top: 10px; 
-      right: 10px; 
-      background: transparent; 
-      border: none; 
-      font-size: 18px; 
-      cursor: pointer;
-    ">×</button><div style="display: flex; align-items: center; gap: 10px; flex-wrap: nowrap;">
-
-  <img src="例子1.png" alt="說明圖片" style="width: 150px; height: auto;">
-
-  <div style="display: flex; align-items: center; font-size: 16px; white-space: nowrap;">
-    <span style="font-size: 24px; margin-right: 6px;">←</span>
-    <span>這是輸入0123的譜面。</span>
-  </div>
-
-<img src="例子2.png" alt="說明圖片" style="width: 150px; height: auto;">
-
-  <div style="display: flex; align-items: center; font-size: 16px; white-space: nowrap;">
-    <span style="font-size: 24px; margin-right: 6px;">←</span>
-    <span>這是輸入013的譜面。</span>
-  </div>
-
-</div>
-    <!-- 你的說明內容 -->
-    <div id="modalContent">從左到右分別為1234到n鍵<br />
-      輸入0則為第1鍵以此類推，若大於9時則使用小寫字母作為輸入，<br />
-      例如a代表第11鍵，b代表第12鍵
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">RHYTHM PRACTICE</div>
+    <div class="header-btns">
+      <button class="btn" id="pauseBtn">PAUSE</button>
+      <button class="btn" id="resetBtn">RESET</button>
+      <button class="btn" id="toggleSettings">SETTINGS</button>
     </div>
   </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-label">COMBO</div>
+      <div class="stat-value" id="statCombo">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">MAX COMBO</div>
+      <div class="stat-value" id="statMaxCombo">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">MISS</div>
+      <div class="stat-value miss" id="statMiss">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">MODE</div>
+      <div class="stat-value" id="statMode" style="font-size:11px;letter-spacing:1px">RANDOM</div>
+    </div>
+  </div>
+
+  <!-- Game Area -->
+  <div style="position:relative">
+    <div id="gameArea">
+      <div class="judge-line"></div>
+      <div id="pauseOverlay">PAUSED</div>
+    </div>
+    <div id="keyBar"></div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div id="settingsPanel">
+
+    <!-- 基本設定 -->
+    <div class="settings-section">
+      <div class="section-title">BASIC CONFIG</div>
+
+      <div class="setting-row">
+        <span class="setting-label">Key 數量</span>
+        <input type="number" id="keyCountInput" min="1" max="44" value="4" />
+        <span style="font-size:11px;color:var(--text-dim)">（1～44）</span>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-label">對應按鍵</span>
+        <input type="text" id="keyInput" value="dfjk" placeholder="dfjk" />
+        <span style="font-size:11px;color:var(--text-dim)">按順序輸入</span>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-label">循環模式</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="loopMode" checked style="accent-color:var(--accent);width:14px;height:14px;" />
+          <span style="font-size:13px;color:var(--text-dim)">啟用循環</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 外觀設定 -->
+    <div class="settings-section">
+      <div class="section-title">APPEARANCE</div>
+
+      <div class="setting-row">
+        <span class="setting-label">音符寬度</span>
+        <input type="range" id="cellWidthRange" min="30" max="150" value="80" />
+        <span class="range-value" id="cellWidthVal">80px</span>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-label">譜面寬度</span>
+        <input type="range" id="chartWidthRange" min="200" max="1200" value="500" />
+        <span class="range-value" id="chartWidthVal">500px</span>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-label">下落間距</span>
+        <input type="range" id="cellGapRange" min="10" max="80" value="32" />
+        <span class="range-value" id="cellGapVal">32px</span>
+      </div>
+    </div>
+
+    <!-- Key 圖片 -->
+    <div class="settings-section">
+      <div class="section-title">KEY IMAGES（可選，替換音符外觀）</div>
+      <div class="img-grid" id="imgGrid"></div>
+      <button class="btn" id="clearImgBtn" style="margin-top:6px;font-size:10px;">清除所有圖片</button>
+    </div>
+
+    <!-- 譜面輸入 -->
+    <div class="settings-section">
+      <div class="section-title">MAP EDITOR</div>
+      <div class="map-area">
+        <textarea id="mapInput" placeholder="在此輸入譜面，留空則使用隨機...&#10;範例: 1234(12)R R[123] R-[12] +* +**"></textarea>
+        <div class="map-hint">
+          <b>語法說明：</b><br>
+          <code>1</code>～<code>9</code> 第1～9鍵 ｜ <code>a</code>～<code>z</code> 第10～35鍵（a=10）<br>
+          <code>(12)</code> 同時按下1和2鍵 ｜ <code>()</code> 空組合不顯示<br>
+          <code>R</code> 完全隨機 ｜ <code>R[12]</code> 從1或2中隨機 ｜ <code>R-[12]</code> 排除1和2後隨機<br>
+          <code>R+</code> 隨機一鍵並重複出現（例：隨機出1則呈現11）<br>
+          <code>R-[+]</code> 隨機但排除上一個音符 ｜ <code>R[1+]</code> 從1或上一個音符中隨機<br>
+          <code>+</code> 同於前一個音符（若為第一個音符則當作R）｜ <code>+*</code> 同於前兩個 ｜ <code>+**</code> 同於前三個<br>
+          空白行或空格會被略過
+        </div>
+        <div class="map-tools">
+          <button class="btn" id="clearMapBtn">清除譜面</button>
+          <button class="btn" id="validateMapBtn">驗證語法</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 隨機生成 -->
+<div class="settings-section">
+  <div class="section-title">RANDOM GENERATOR</div>
+  <div class="random-row">
+    <span class="setting-label">生成長度</span>
+    <input type="number" id="randLenInput" min="4" max="500" value="32" style="width:70px;" />
+    
+    <span class="setting-label" style="margin-left:16px;">最大重複次數</span>
+    <input type="number" id="maxRepeatInput" min="1" max="10" value="2" style="width:70px;" />
+
+    <span class="setting-label" style="margin-left:16px;">最大疊數</span>
+    <input type="number" id="randMaxStack" min="1" max="44" value="1" style="width:70px;" />
+    <button class="btn" id="genRandomBtn">生成隨機譜面</button>
+  </div>
 </div>
 
-<script src="map_editor_block.js"></script>
-  <label for="mapInput">請在此編寫譜面:</label><br />
-  <input id="mapInput" style="width:100%; " placeholder="在這裡輸入譜面資料..."></input>
-  <br />
-  <button id="saveSettings" style="margin-top:10px;">保存設定</button>
+    <button id="saveSettings">SAVE &amp; PLAY</button>
+  </div>
+
 </div>
 
+<div id="comboPopup"></div>
 
-<script src="game.js"></script>
-<script src="settings.js"></script>
+<script>
+// ===== STATE =====
+let keyCount = 4;
+let keyPosition = { 'd': 0, 'f': 1, 'j': 2, 'k': 3 };
+let loop = true;
+let paused = false;
+let combo = 0;
+let maxCombo = 0;
+let missCount = 0;
+let keyImages = {}; // lane index -> data URL
+
+// Chart
+let chartWidth = 500;
+let cellWidth = 80;
+let cellGap = 32;
+
+// Map
+let parsedMap = null; // array of note-sets (each is array of lane indices)
+let mapIndex = 0;
+
+// Timing (for chord detection)
+let pendingRow = null; // { lanes: Set, timer: id, pressed: Set }
+
+const root = document.documentElement;
+const gameArea = document.getElementById('gameArea');
+const keyBar = document.getElementById('keyBar');
+const pauseOverlay = document.getElementById('pauseOverlay');
+
+// ===== MAP PARSER =====
+function charToLane(ch) {
+  if (ch >= '1' && ch <= '9') return parseInt(ch) - 1;
+  if (ch >= 'a' && ch <= 'z') return ch.charCodeAt(0) - 'a'.charCodeAt(0) + 9;
+  return null;
+}
+
+function laneToChar(lane) {
+  if (lane < 9) return String(lane + 1);
+  return String.fromCharCode('a'.charCodeAt(0) + lane - 9);
+}
+
+// Tokenize the map input
+function tokenize(input) {
+  const tokens = [];
+  let i = 0;
+  while (i < input.length) {
+    const ch = input[i];
+    if (ch === ' ' || ch === '\n' || ch === '\r' || ch === '　') { i++; continue; }
+
+    // Chord: (...)
+    if (ch === '(' || ch === '（') {
+      const close = input.indexOf(ch === '(' ? ')' : '）', i);
+      if (close === -1) { i++; continue; }
+      const inner = input.slice(i+1, close);
+      const lanes = new Set();
+      for (const c of inner) {
+        const l = charToLane(c);
+        if (l !== null && l < keyCount) lanes.add(l);
+      }
+      if (lanes.size > 0) tokens.push({ type: 'chord', lanes: [...lanes] });
+      i = close + 1;
+      continue;
+    }
+
+    // Random: R, R+, R[...], R-[...], R[1+], R-[+] etc.
+    if (ch === 'R') {
+      i++;
+      let exclude = false;
+      let repeatAfter = false; // R+ => output random then repeat it
+
+      // R+ : random, then next note = same
+      if (input[i] === '+') {
+        repeatAfter = true;
+        i++;
+        // skip any trailing *
+        while (input[i] === '*') i++;
+        tokens.push({ type: 'random', exclude: false, specified: null, repeatAfter: true });
+        continue;
+      }
+
+      if (input[i] === '-') { exclude = true; i++; }
+
+      let specified = null;
+      let hasPrevPlaceholder = false; // '+' inside []
+
+      if (input[i] === '[' || input[i] === '［') {
+        const closeChar = input[i] === '[' ? ']' : '］';
+        const close = input.indexOf(closeChar, i);
+        if (close !== -1) {
+          const inner = input.slice(i+1, close);
+          specified = [];
+          for (const c of inner) {
+            if (c === '+') {
+              hasPrevPlaceholder = true; // means "include/exclude prev lane"
+            } else {
+              const l = charToLane(c);
+              if (l !== null && l < keyCount) specified.push(l);
+            }
+          }
+          i = close + 1;
+        } else i++;
+      }
+      tokens.push({ type: 'random', exclude, specified, hasPrevPlaceholder });
+      continue;
+    }
+
+    // Repeat: + (followed by zero or more *)
+    if (ch === '+') {
+      i++;
+      let stars = 0;
+      while (input[i] === '*') { stars++; i++; }
+      tokens.push({ type: 'repeat', back: stars + 1 });
+      continue;
+    }
+
+    // Single lane
+    const lane = charToLane(ch);
+    if (lane !== null && lane < keyCount) {
+      tokens.push({ type: 'single', lanes: [lane] });
+    }
+    i++;
+  }
+  return tokens;
+}
+
+function resolveMap(tokens) {
+  const resolved = [];
+
+  for (let ti = 0; ti < tokens.length; ti++) {
+    const tok = tokens[ti];
+
+    if (tok.type === 'single' || tok.type === 'chord') {
+      resolved.push(tok.lanes);
+
+    } else if (tok.type === 'random') {
+      // Store as random entry; hasPrevPlaceholder and repeatAfter handled at runtime
+      resolved.push({ random: true, exclude: tok.exclude, specified: tok.specified,
+                       hasPrevPlaceholder: !!tok.hasPrevPlaceholder,
+                       repeatAfter: !!tok.repeatAfter });
+      // R+ => push a second "copy of prev random" placeholder
+      if (tok.repeatAfter) {
+        resolved.push({ random: true, exclude: false, specified: null,
+                        hasPrevPlaceholder: false, repeatAfter: false,
+                        isPrevCopy: true });
+      }
+
+    } else if (tok.type === 'repeat') {
+      const refIdx = resolved.length - tok.back;
+      if (refIdx < 0) {
+        // No prior note exists → treat as plain R
+        resolved.push({ random: true, exclude: false, specified: null,
+                        hasPrevPlaceholder: false, repeatAfter: false });
+      } else {
+        const ref = resolved[refIdx];
+        if (Array.isArray(ref)) {
+          resolved.push([...ref]);
+        } else {
+          resolved.push(ref); // carry the random token
+        }
+      }
+    }
+  }
+  return resolved;
+}
+
+// 在 script 區塊搜尋 function resolveRandom 並整段替換
+let lastRandomLanes = []; 
+let repeatCount = 0;      
+let maxRepeat = 2; // 預設值
+let lastResolvedLanes = []; // 上一個實際被解析出的 lane（供 + 佔位使用）
+
+function resolveRandom(entry, sameLanes = []) {
+  // isPrevCopy: R+ 第二個音符 → 直接複製上次結果
+  if (entry.isPrevCopy) {
+    return lastResolvedLanes.length > 0
+      ? [...lastResolvedLanes]
+      : [Math.floor(Math.random() * keyCount)];
+  }
+
+  let pool = Array.from({ length: keyCount }, (_, i) => i);
+
+  if (entry.specified !== null && entry.specified !== undefined) {
+    if (!entry.exclude) {
+      // R[1+] specified=[0], hasPrevPlaceholder=true → pool = specified ∪ lastResolved
+      let base = entry.specified.filter(l => l < keyCount);
+      if (entry.hasPrevPlaceholder && lastResolvedLanes.length > 0) {
+        const combined = new Set([...base, ...lastResolvedLanes]);
+        pool = [...combined];
+      } else {
+        pool = base;
+      }
+    } else {
+      // R-[12] or R-[+]
+      let excludeSet = new Set(entry.specified.filter(l => l < keyCount));
+      if (entry.hasPrevPlaceholder && lastResolvedLanes.length > 0) {
+        lastResolvedLanes.forEach(l => excludeSet.add(l));
+      }
+      pool = pool.filter(l => !excludeSet.has(l));
+    }
+  }
+
+  // fallback: pool 為空時 reset
+  if (pool.length === 0) pool = Array.from({ length: keyCount }, (_, i) => i);
+
+  // --- 限制重複邏輯 ---
+  if (pool.length > 1 && repeatCount >= maxRepeat) {
+    const lastSet = new Set(lastRandomLanes);
+    const filteredPool = pool.filter(l => !lastSet.has(l));
+    if (filteredPool.length > 0) pool = filteredPool;
+  }
+
+  const sameSet = new Set(sameLanes);
+  const finalPool = pool.filter(l => !sameSet.has(l));
+  const selectedLane = finalPool.length > 0 
+    ? finalPool[Math.floor(Math.random() * finalPool.length)]
+    : pool[Math.floor(Math.random() * pool.length)];
+
+  // 更新計數器
+  if (lastRandomLanes.includes(selectedLane)) {
+    repeatCount++;
+  } else {
+    repeatCount = 1;
+    lastRandomLanes = [selectedLane];
+  }
+
+  lastResolvedLanes = [selectedLane];
+  return [selectedLane];
+}
+
+function getNextNote() {
+  if (!parsedMap || parsedMap.length === 0) {
+    // Pure random
+    const lane = Math.floor(Math.random() * keyCount);
+    lastResolvedLanes = [lane];
+    return [lane];
+  }
+
+  const entry = parsedMap[mapIndex];
+  mapIndex = loop ? (mapIndex + 1) % parsedMap.length : Math.min(mapIndex + 1, parsedMap.length - 1);
+
+  if (Array.isArray(entry)) {
+    lastResolvedLanes = [...entry];
+    return entry;
+  }
+  if (entry && entry.random) return resolveRandom(entry, []);
+  const lane = Math.floor(Math.random() * keyCount);
+  lastResolvedLanes = [lane];
+  return [lane];
+}
+
+// ===== STACK =====
+const stack = []; // each item: { lanes: [lane indices] }
+
+function createNote() {
+  const lanes = getNextNote();
+  return { lanes: [...new Set(lanes.filter(l => l >= 0 && l < keyCount))] };
+}
+
+function resetGame() {
+  stack.length = 0;
+  mapIndex = 0;
+  pendingRow = null;
+  const visibleRows = 10;
+  for (let i = 0; i < visibleRows; i++) {
+    stack.unshift(createNote());
+  }
+  render();
+}
+
+function fallDown() {
+  stack.unshift(createNote());
+  stack.pop();
+  render();
+}
+
+// ===== RENDER =====
+function render() {
+  gameArea.innerHTML = '';
+  gameArea.appendChild(judgeLineEl);
+  gameArea.appendChild(pauseOverlay);
+
+  const currentRow = stack[stack.length - 1];
+
+  for (let i = 0; i < stack.length; i++) {
+    const note = stack[i];
+    const isCurrent = (i === stack.length - 1);
+    const rowDiv = document.createElement('div');
+    rowDiv.classList.add('row');
+    rowDiv.style.justifyContent = 'space-evenly';
+
+    for (let lane = 0; lane < keyCount; lane++) {
+      const cell = document.createElement('div');
+      cell.classList.add('note-cell');
+      cell.style.width = cellWidth + 'px';
+
+      const isActive = note.lanes.includes(lane);
+      if (isActive) {
+        if (keyImages[lane]) {
+          cell.classList.add('key-img-active');
+          const img = document.createElement('img');
+          img.src = keyImages[lane];
+          cell.appendChild(img);
+        } else {
+          cell.classList.add('active');
+        }
+      }
+      rowDiv.appendChild(cell);
+    }
+    gameArea.appendChild(rowDiv);
+  }
+
+  // Render key bar
+  renderKeyBar();
+}
+
+function renderKeyBar() {
+  keyBar.innerHTML = '';
+  const keys = Object.entries(keyPosition).sort((a,b) => a[1]-b[1]);
+  for (let lane = 0; lane < keyCount; lane++) {
+    const keyEl = document.createElement('div');
+    keyEl.classList.add('key-display');
+    keyEl.style.width = cellWidth + 'px';
+    const entry = keys.find(([,v]) => v === lane);
+    keyEl.textContent = entry ? entry[0].toUpperCase() : '?';
+    keyEl.id = `key-display-${lane}`;
+    keyBar.appendChild(keyEl);
+  }
+}
+
+// ===== JUDGE LINE (persistent element) =====
+const judgeLineEl = document.createElement('div');
+judgeLineEl.className = 'judge-line';
+
+// ===== INPUT =====
+// --- 手機觸控支援碼（直接貼在 // ===== INPUT ===== 之後） ---
+
+// 監聽下方的 keyBar 點擊事件
+keyBar.addEventListener('touchstart', e => {
+  e.preventDefault(); // 防止縮放和捲動
+  if (paused) return;
+
+  // 取得點擊位置
+  const touch = e.changedTouches[0];
+  const rect = keyBar.getBoundingClientRect();
+  
+  // 計算點擊的是第幾個軌道 (Lane)
+  const x = touch.clientX - rect.left;
+  const laneIndex = Math.floor((x / rect.width) * keyCount);
+
+  if (laneIndex >= 0 && laneIndex < keyCount) {
+    // 1. 視覺效果：讓按鈕變色
+    const kd = document.getElementById(`key-display-${laneIndex}`);
+    if (kd) {
+      kd.classList.add('pressed');
+      // 100毫秒後自動移除變色（模擬按一下的感覺）
+      setTimeout(() => kd.classList.remove('pressed'), 100);
+    }
+
+    // 2. 觸發原本代碼中的判定邏輯
+    const currentNote = stack[stack.length - 1];
+    if (currentNote && currentNote.lanes.includes(laneIndex)) {
+      currentNote._hitLanes = currentNote._hitLanes || new Set();
+      currentNote._hitLanes.add(laneIndex);
+
+      // 如果是單鍵或是組合鍵點滿了，就執行 hit
+      const allHit = currentNote.lanes.every(l => currentNote._hitLanes.has(l));
+      if (allHit) {
+        registerHit();
+      }
+    }
+  }
+}, { passive: false });
+
+// 為了讓觸控更靈活，把 keyBar 的高度撐開一點（可選，建議加入）
+keyBar.style.height = "100px"; 
+keyBar.style.touchAction = "none";
+const pressedKeys = new Set();
+
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (paused) return;
+
+  // Toggle pause
+  if (e.key === 'Escape') { togglePause(); return; }
+  if (document.getElementById('settingsPanel').style.display === 'flex') return;
+
+  const lane = keyPosition[e.key];
+  if (lane === undefined) return;
+
+  pressedKeys.add(e.key);
+  const kd = document.getElementById(`key-display-${lane}`);
+  if (kd) kd.classList.add('pressed');
+
+  if (stack.length === 0) return;
+
+  const currentNote = stack[stack.length - 1];
+  if (!currentNote.lanes.includes(lane)) return;
+
+  // Mark as hit
+  currentNote._hitLanes = currentNote._hitLanes || new Set();
+  currentNote._hitLanes.add(lane);
+
+  // Check if chord is complete
+  const allHit = currentNote.lanes.every(l => currentNote._hitLanes.has(l));
+
+  if (currentNote.lanes.length === 1) {
+    // Single key - immediate
+    registerHit();
+  } else {
+    // Chord - wait 0.3s for all keys
+    if (!currentNote._chordTimer) {
+      currentNote._chordTimer = setTimeout(() => {
+        if (currentNote._hitLanes && currentNote.lanes.every(l => currentNote._hitLanes.has(l))) {
+          registerHit();
+        }
+        // partial hit - do nothing (miss)
+        currentNote._chordTimer = null;
+      }, 300);
+    }
+    if (allHit) {
+      clearTimeout(currentNote._chordTimer);
+      currentNote._chordTimer = null;
+      registerHit();
+    }
+  }
+});
+
+document.addEventListener('keyup', e => {
+  pressedKeys.delete(e.key);
+  const lane = keyPosition[e.key];
+  if (lane !== undefined) {
+    const kd = document.getElementById(`key-display-${lane}`);
+    if (kd) kd.classList.remove('pressed');
+  }
+});
+
+function registerHit() {
+  combo++;
+  if (combo > maxCombo) maxCombo = combo;
+  document.getElementById('statCombo').textContent = combo;
+  document.getElementById('statMaxCombo').textContent = maxCombo;
+
+  if (combo > 0 && combo % 10 === 0) showComboPopup(combo);
+
+  fallDown();
+}
+
+function showComboPopup(n) {
+  const el = document.getElementById('comboPopup');
+  el.textContent = n + ' COMBO';
+  el.className = 'show';
+  setTimeout(() => el.className = '', 700);
+}
+
+// ===== PAUSE =====
+function togglePause() {
+  paused = !paused;
+  pauseOverlay.style.display = paused ? 'flex' : 'none';
+  document.getElementById('pauseBtn').textContent = paused ? 'RESUME' : 'PAUSE';
+}
+
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  combo = 0; missCount = 0; maxCombo = 0;
+  document.getElementById('statCombo').textContent = '0';
+  document.getElementById('statMaxCombo').textContent = '0';
+  document.getElementById('statMiss').textContent = '0';
+  resetGame();
+});
+
+// ===== SETTINGS =====
+const toggleBtn = document.getElementById('toggleSettings');
+const settingsPanel = document.getElementById('settingsPanel');
+
+toggleBtn.addEventListener('click', () => {
+  const showing = settingsPanel.style.display === 'flex';
+  settingsPanel.style.display = showing ? 'none' : 'flex';
+  toggleBtn.textContent = showing ? 'SETTINGS' : 'CLOSE';
+  toggleBtn.classList.toggle('active', !showing);
+});
+
+// Range inputs
+const cellWidthRange = document.getElementById('cellWidthRange');
+const chartWidthRange = document.getElementById('chartWidthRange');
+const cellGapRange = document.getElementById('cellGapRange');
+
+cellWidthRange.addEventListener('input', () => {
+  document.getElementById('cellWidthVal').textContent = cellWidthRange.value + 'px';
+});
+chartWidthRange.addEventListener('input', () => {
+  document.getElementById('chartWidthVal').textContent = chartWidthRange.value + 'px';
+});
+cellGapRange.addEventListener('input', () => {
+  document.getElementById('cellGapVal').textContent = cellGapRange.value + 'px';
+});
+
+// Key count change - rebuild img grid
+document.getElementById('keyCountInput').addEventListener('change', () => {
+  buildImgGrid(parseInt(document.getElementById('keyCountInput').value) || 4);
+});
+
+function buildImgGrid(n) {
+  const grid = document.getElementById('imgGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'img-slot';
+    const preview = document.createElement('div');
+    preview.className = 'img-preview';
+    preview.id = `img-preview-${i}`;
+    if (keyImages[i]) {
+      const img = document.createElement('img');
+      img.src = keyImages[i];
+      preview.appendChild(img);
+    } else {
+      preview.textContent = '+';
+    }
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.id = `img-file-${i}`;
+    fileInput.dataset.lane = i;
+    fileInput.addEventListener('change', onImgUpload);
+    preview.addEventListener('click', () => fileInput.click());
+
+    const lbl = document.createElement('div');
+    lbl.className = 'img-slot-label';
+    lbl.textContent = 'KEY ' + (i+1);
+
+    slot.appendChild(preview);
+    slot.appendChild(fileInput);
+    slot.appendChild(lbl);
+    grid.appendChild(slot);
+  }
+}
+
+function onImgUpload(e) {
+  const lane = parseInt(e.target.dataset.lane);
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    keyImages[lane] = ev.target.result;
+    const preview = document.getElementById(`img-preview-${lane}`);
+    preview.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = ev.target.result;
+    preview.appendChild(img);
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('clearImgBtn').addEventListener('click', () => {
+  keyImages = {};
+  buildImgGrid(parseInt(document.getElementById('keyCountInput').value) || 4);
+});
+
+// Clear map
+document.getElementById('clearMapBtn').addEventListener('click', () => {
+  document.getElementById('mapInput').value = '';
+});
+
+// Validate map
+document.getElementById('validateMapBtn').addEventListener('click', () => {
+  const input = document.getElementById('mapInput').value.trim();
+  if (!input) { alert('譜面為空！'); return; }
+  const kc = parseInt(document.getElementById('keyCountInput').value) || 4;
+  const oldKC = keyCount;
+  keyCount = kc;
+  try {
+    const tokens = tokenize(input);
+    const resolved = resolveMap(tokens);
+    alert(`✅ 語法正確！共 ${resolved.length} 個音符`);
+  } catch(e) {
+    alert('❌ 語法錯誤：' + e.message);
+  }
+  keyCount = oldKC;
+});
+
+// Random generator
+document.getElementById('genRandomBtn').addEventListener('click', () => {
+  const len = parseInt(document.getElementById('randLenInput').value) || 32;
+  const maxStack = parseInt(document.getElementById('randMaxStack').value) || 1;
+  const kc = parseInt(document.getElementById('keyCountInput').value) || 4;
+  
+  let map = '';
+  for (let i = 0; i < len; i++) {
+    const noteCount = Math.min(maxStack, Math.floor(Math.random() * maxStack) + 1);
+    if (noteCount === 1) {
+      const lane = Math.floor(Math.random() * kc);
+      map += laneToChar(lane);
+    } else {
+      const lanes = new Set();
+      while (lanes.size < noteCount) {
+        lanes.add(Math.floor(Math.random() * kc));
+      }
+      map += '(' + [...lanes].map(laneToChar).join('') + ')';
+    }
+  }
+  document.getElementById('mapInput').value = map;
+});
+
+// Save settings
+document.getElementById('saveSettings').addEventListener('click', () => {
+  const countInput = document.getElementById('keyCountInput');
+  const keyInp = document.getElementById('keyInput');
+  const count = parseInt(countInput.value);
+  const keys = keyInp.value.trim();
+// 在 saveSettings 的監聽器內加入這三行
+maxRepeat = parseInt(document.getElementById('maxRepeatInput').value) || 2;
+repeatCount = 0; // 重置重複計數
+lastRandomLanes = []; // 重置上一次按鍵記錄
+lastResolvedLanes = []; // 重置上一個解析結果
+  if (!Number.isInteger(count) || count < 1 || count > 44) {
+    countInput.classList.add('error');
+    setTimeout(() => countInput.classList.remove('error'), 1500);
+    alert('Key 數量需在 1～44 之間');
+    return;
+  }
+  if (keys.length !== count) {
+    keyInp.classList.add('error');
+    setTimeout(() => keyInp.classList.remove('error'), 1500);
+    alert(`按鍵數 (${keys.length}) 與欄位數 (${count}) 不符`);
+    return;
+  }
+
+  // Apply
+  keyCount = count;
+  keyPosition = {};
+  keys.split('').forEach((k, i) => keyPosition[k] = i);
+  loop = document.getElementById('loopMode').checked;
+  cellWidth = parseInt(cellWidthRange.value);
+  chartWidth = parseInt(chartWidthRange.value);
+  cellGap = parseInt(cellGapRange.value);
+
+  root.style.setProperty('--cell-width', cellWidth + 'px');
+  root.style.setProperty('--chart-width', chartWidth + 'px');
+  root.style.setProperty('--cell-gap', cellGap + 'px');
+  gameArea.style.width = chartWidth + 'px';
+  keyBar.style.width = chartWidth + 'px';
+
+  // Parse map
+  const mapRaw = document.getElementById('mapInput').value.trim();
+  if (mapRaw) {
+    const tokens = tokenize(mapRaw);
+    parsedMap = resolveMap(tokens);
+    document.getElementById('statMode').textContent = 'MAP';
+  } else {
+    parsedMap = null;
+    document.getElementById('statMode').textContent = 'RANDOM';
+  }
+
+  // Reset stats
+  combo = 0; missCount = 0; maxCombo = 0;
+  document.getElementById('statCombo').textContent = '0';
+  document.getElementById('statMaxCombo').textContent = '0';
+  document.getElementById('statMiss').textContent = '0';
+
+  buildImgGrid(keyCount);
+  settingsPanel.style.display = 'none';
+  toggleBtn.textContent = 'SETTINGS';
+  toggleBtn.classList.remove('active');
+  resetGame();
+});
+
+// ===== INIT =====
+buildImgGrid(4);
+root.style.setProperty('--cell-width', cellWidth + 'px');
+root.style.setProperty('--chart-width', chartWidth + 'px');
+root.style.setProperty('--cell-gap', cellGap + 'px');
+gameArea.style.width = chartWidth + 'px';
+keyBar.style.width = chartWidth + 'px';
+resetGame();
+</script>
 </body>
 </html>
